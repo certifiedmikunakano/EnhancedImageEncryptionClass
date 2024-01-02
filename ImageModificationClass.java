@@ -762,7 +762,86 @@ public class ImageModificationClass {
 		 }
     }
 	
+    public void polynomialDecrypt () throws IOException{
+	   	 Scanner scan = new Scanner(System.in);
+
+		System.out.println("Enter the exact safe prime used: ");
+		String im = scan.nextLine();
+	   	 safePrime = Integer.parseInt(im);
+	   	 
+	   	 int width = (safePrime) * pixelSize;    //width of the image
+	   	 int height = (safePrime) * pixelSize;   //height of the image
+	   	 BufferedImage image = null;
+	   	 File f = null;
+	  	 
+	   	 //read image
+	   	 try{
+	 		 f = new File(fileName); //image file path
+	 		 BufferedImage rawImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+	 		 rawImage = ImageIO.read(f);
+	 		 image = resizeImage(rawImage, width, height);
+	 		 System.out.println("Reading complete.");
+	   	 }catch(IOException e){
+	 		 System.out.println("Error: "+e);
+	   	 }
+	   	 
+	   	 
+	  	 
+	   	 System.out.println("Enter the coefficients of polynomial 1 separated by spaces: \n");
+	   	 String codestring0 = scan.nextLine();
+	   	 String[] coeffs0 = codestring0.split("\\s+");
+	   	 ArrayList<Integer> poly0 = toArrayList(coeffs0);
+	   	 
+	   	System.out.println("Enter the coefficients of polynomial 2 separated by spaces: \n");
+	   	 String codestring1 = scan.nextLine();
+	   	 String[] coeffs1 = codestring1.split("\\s+");
+	   	 ArrayList<Integer> poly1 = toArrayList(coeffs1);
+	   	 
+	   	System.out.println("Enter the coefficients of polynomial 3 separated by spaces: \n");
+	   	 String codestring2 = scan.nextLine();
+	   	 String[] coeffs2 = codestring2.split("\\s+");
+	   	 ArrayList<Integer> poly2 = toArrayList(coeffs2);
+	   	 
+	   	System.out.println("Enter the coefficients of polynomial 4 separated by spaces: \n");
+	   	 String codestring3 = scan.nextLine();
+	   	 String[] coeffs3 = codestring3.split("\\s+");
+	   	 ArrayList<Integer> poly3 = toArrayList(coeffs3);
+	   	 
+	   	System.out.println("Enter the coefficients of polynomial 5 separated by spaces: \n");
+	   	 String codestring4 = scan.nextLine();
+	   	 String[] coeffs4 = codestring4.split("\\s+");
+	   	 ArrayList<Integer> poly4 = toArrayList(coeffs4);
+	   	 
+	   	System.out.println("Enter the coefficients of polynomial 6 separated by spaces: \n");
+	   	 String codestring5 = scan.nextLine();
+	   	 String[] coeffs5 = codestring5.split("\\s+");
+	   	 ArrayList<Integer> poly5 = toArrayList(coeffs5);
+
+
+	   	 BufferedImage unscrambledImage1 = polyMosaicUnscrambleD2 (image, poly4, poly5);
+	   	 BufferedImage unscrambledImage2 = polyMosaicUnscrambleD1 (unscrambledImage1, poly2, poly3);
+	  	 BufferedImage unscrambledImage3 = polyMosaicUnscrambleRows (unscrambledImage2, poly1);
+	  	 BufferedImage unscrambledImage4 = polyMosaicUnscrambleCols (unscrambledImage3, poly0);
+	   	
+
+	   	 System.out.println("Image unscrambled.");
+	  	 
+	  					 
+	   	 ImageIO.write(unscrambledImage4, "png", f);
+	   	 System.out.println("Writing complete.");
+	   	 
+	   	 image = unscrambledImage4;
+	 		      
+	 		 
+	     	}
     
+    private static ArrayList<Integer> toArrayList (String[] array) {
+    	ArrayList<Integer> result = new ArrayList<Integer>();
+    	for (int i = 0; i < array.length; i++) {
+    		result.add(Integer.parseInt(array[i]));
+    	}
+    	return result;
+    }
 	public static int discreteLogBasePrModsafePrime (int base, int k) {
  		  int value = 0;
  		  for (int i = 0; i < safePrime; i++) {
@@ -883,6 +962,16 @@ public class ImageModificationClass {
   	  }
   	  return newArr;
 	}
+	
+	private static ArrayList<BufferedImage> polyDecrypt (ArrayList <BufferedImage> original, ArrayList<Integer> poly) {
+	  	  ArrayList<BufferedImage> newArr = new ArrayList<BufferedImage>();
+	  	  for (int i = 0; i < original.size(); i++) {
+	  		  int desiredIndex = inversePolyResult(poly, i, safePrime);
+	  		  newArr.add(original.get(desiredIndex));
+
+	  	  }
+	  	  return newArr;
+		}
   	
  	//use pr1
    	public static ArrayList<BufferedImage> mosaicDecryptRows (ArrayList <BufferedImage> original, int pr) {
@@ -1579,6 +1668,115 @@ public static BufferedImage mosaicUnscrambleRows (BufferedImage original, int pr
 		  scrambled = m.getMosaic();
 		  return scrambled;
 	}
+ 	
+ 	public static BufferedImage polyMosaicUnscrambleRows (BufferedImage original, ArrayList<Integer> pr) throws IOException {
+		  BufferedImage unscrambled = original;
+		  Mosaic4 m = new Mosaic4 (safePrime, pixelSize, unscrambled);
+
+		  //scramble each column
+		  for (int x = 0; x < safePrime; x++) {
+			  ArrayList<BufferedImage> origCol = new ArrayList <BufferedImage> ();
+			  for (int j = 0; j < safePrime; j++) {
+				  BufferedImage c = m.getPixel(x, j);
+				  origCol.add(c);
+			  }
+			 
+			  ArrayList<BufferedImage> unscrambledCol = polyDecrypt (origCol, pr);
+			  for (int j = 0; j < safePrime; j++) {
+				  BufferedImage newImage = unscrambledCol.get(j);
+				  m.setPixel(x, j, newImage);
+			  }
+			  System.out.println("Row " + x + " unscrambled");
+				 
+
+
+		  }
+		  unscrambled = m.getMosaic();
+		  return unscrambled;
+		}
+ 	
+ 	public static BufferedImage polyMosaicUnscrambleCols (BufferedImage original, ArrayList<Integer> pr) throws IOException {
+		  BufferedImage unscrambled = original;
+		  Mosaic4 m = new Mosaic4 (safePrime, pixelSize, unscrambled);
+		 
+		  //scramble each row
+		  for (int y = 0; y < safePrime; y++) {
+			  ArrayList<BufferedImage> origRow = new ArrayList <BufferedImage> ();
+			  for (int j = 0; j < safePrime; j++) {
+				  BufferedImage c = m.getPixel(j, y);
+				  origRow.add(c);
+			  }
+			 
+			  ArrayList<BufferedImage> unscrambledRow = polyDecrypt (origRow, pr);
+			  for (int j = 0; j < safePrime; j++) {
+				  BufferedImage newImage = unscrambledRow.get(j);
+				  m.setPixel(j, y, newImage);
+			  }
+			  System.out.println("Column " + y + " unscrambled");
+			
+
+
+
+		  }
+		  unscrambled = m.getMosaic();
+		  return unscrambled;
+	  }
+	
+	public static BufferedImage polyMosaicUnscrambleD1 (BufferedImage original, ArrayList<Integer> pr1, ArrayList<Integer> pr2) throws IOException {
+		  BufferedImage unscrambled = original;
+		  Mosaic4 m = new Mosaic4 (safePrime, pixelSize, unscrambled);
+
+		  //scramble each row
+		  for (int y = 0; y < safePrime; y++) {
+			  ArrayList<BufferedImage> origRow = new ArrayList <BufferedImage> ();
+			  for (int j = 0; j < safePrime; j++) {
+					  int modifiedY = (y + polyResult(pr1, j, safePrime)) % safePrime;
+				  BufferedImage c = m.getPixel(j, modifiedY);
+				  origRow.add(c);
+			  }
+			 
+			  ArrayList<BufferedImage> unscrambledRow = polyDecrypt (origRow, pr2);
+			  for (int j = 0; j < safePrime; j++) {
+					  int modifiedY = (y + polyResult(pr1, j, safePrime)) % safePrime;
+				  BufferedImage newImage = unscrambledRow.get(j);
+				  m.setPixel(j, modifiedY, newImage);
+			  }
+			  System.out.println("Column " + y + " unscrambled");
+	  			
+
+		  }
+		  unscrambled = m.getMosaic();
+		  return unscrambled;
+	  }
+	
+	public static BufferedImage polyMosaicUnscrambleD2 (BufferedImage original, ArrayList<Integer> pr1, ArrayList<Integer> pr2) throws IOException {
+		  BufferedImage unscrambled = original;
+		  Mosaic4 m = new Mosaic4 (safePrime, pixelSize, unscrambled);
+
+		  //scramble each column
+		  for (int x = 0; x < safePrime; x++) {
+			  ArrayList<BufferedImage> origCol = new ArrayList <BufferedImage> ();
+			  for (int j = 0; j < safePrime; j++) {
+				  int modifiedX = (x + polyResult(pr1, j, safePrime)) % safePrime;
+				  BufferedImage c = m.getPixel(modifiedX, j);
+				  origCol.add(c);
+			  }
+			 
+			  ArrayList<BufferedImage> unscrambledCol = polyDecrypt (origCol, pr2);
+			  for (int j = 0; j < safePrime; j++) {
+				  int modifiedX = (x + polyResult(pr1, j, safePrime)) % safePrime;
+				  BufferedImage newImage = unscrambledCol.get(j);
+				  m.setPixel(modifiedX, j, newImage);
+			  }
+			  System.out.println("Row " + x + " unscrambled");
+	  			 
+
+
+		  }
+		  unscrambled = m.getMosaic();
+		  return unscrambled;
+	}
+ 	
 	
  	
  	//---------------------------------------
@@ -2063,6 +2261,18 @@ public static BufferedImage mosaicUnscrambleRows (BufferedImage original, int pr
 			total += (poly.get(exponent) * (power(x, exponent, modulus))); 
 		}
 		return (total % modulus);
+	}
+	
+	//for bijective polynomials only
+	public static int inversePolyResult (ArrayList<Integer> poly, int y, int modulus) {
+		int result = 0;
+		for (int x = 0; x < modulus; x++) {
+			if (polyResult(poly, x, modulus) == y) {
+				result = x;
+				break;
+			}
+		}
+		return result;
 	}
 	
 	public static int power (int n, int k, int modulus) {
